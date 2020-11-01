@@ -3,20 +3,14 @@ const express = require('express')
 const app = express()
 const Joi = require('joi');
 app.use(express.json());
-
-var connection = mysql.createConnection({
-  host     : 'localhost',
-  user     : 'yogesh',
-  password : 'Password@123',
-  database : 'MYDB'
-});
- 
-connection.connect();
+const sql = require('mssql')
+sql.connect('mssql://apjindiashop:9782960150@mM@5.226.138.48/apjindiashop')
 
 function validateSignUp(body){
     const schema=Joi.object({
         userName:Joi.string().min(1).required(),
         emailId: Joi.string().min(1).required(),
+        mobile:Joi.string().allow(""),
         password: Joi.string().min(1).required(),
         referralCode: Joi.string().allow("")
     });
@@ -32,26 +26,27 @@ function generate_code(length)
     {
         res = res+ data[Math.floor(Math.random()*data.length)];
     }
+
     return res;
 }
 
-function addBalance(id,amount){
+async function addBalance(id,amount){
     query=`SELECT * from userWallet WHERE userId='${id}'`;
-    connection.query(query,function (error, results, fields){
+    new sql.Request().query(query, function(error,results){
         if(error){
             console.log(error);
         }
         if(results){
-            balance = results[0].balance;
+            balance = results.recordset[0].balance;
             balance=balance+amount;
-            query=`INSERT INTO userTransactions VALUES('${id}',${amount},'DEBIT',now(),'${balance}')`
-            connection.query(query,function (error, results, fields){
+            query=`INSERT INTO userTransactions VALUES('${id}',${amount},'DEBIT',GETDATE(),'${balance}')`
+            new sql.Request().query(query, function(error,results){
                 if(error){
                     console.log(error);
                 }
                 if(results){
                     query = `UPDATE userWallet SET balance=${balance} WHERE userId='${id}'`;
-                    connection.query(query,function (error, results, fields){
+                    new sql.Request().query(query, function(error,results){
                         if(error){
                             console.log(error);
                         }});
@@ -65,47 +60,47 @@ function distributeMoney(parentId){
     addBalance(parentId,500);
 
     query=`SELECT parentId from userRelation WHERE userId='${parentId}'`;
-    connection.query(query,function (error,results,fields){
+    new sql.Request().query(query, function(error,results){
         if(error)
          console.log(error)
-        if(results && results.length!=0){
-            addBalance(results[0].parentId,200);
-            query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
-            connection.query(query,function (error,results,fields){
+        if(results && results.recordset.length!=0){
+            addBalance(results.recordset[0].parentId,200);
+            query=`SELECT parentId from userRelation WHERE userId='${results.recordset[0].parentId}'`;
+            new sql.Request().query(query, function(error,results){
                 if(error)
                 console.log(error)
-                if(results && results.length!=0){
-                    addBalance(results[0].parentId,150);
-                    query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
-                    connection.query(query,function (error,results,fields){
+                if(results && results.recordset.length!=0){
+                    addBalance(results.recordset[0].parentId,150);
+                    query=`SELECT parentId from userRelation WHERE userId='${results.recordset[0].parentId}'`;
+                    new sql.Request().query(query, function(error,results){
                         if(error)
                         console.log(error)
-                        if(results && results.length!=0){
-                            addBalance(results[0].parentId,100);
-                            query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
-                            connection.query(query,function (error,results,fields){
+                        if(results && results.recordset.length!=0){
+                            addBalance(results.recordset[0].parentId,100);
+                            query=`SELECT parentId from userRelation WHERE userId='${results.recordset[0].parentId}'`;
+                            new sql.Request().query(query, function(error,results){
                                 if(error)
                                 console.log(error)
-                                if(results && results.length!=0){
-                                    addBalance(results[0].parentId,50);
-                                    query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
-                                    connection.query(query,function (error,results,fields){
+                                if(results && results.recordset.length!=0){
+                                    addBalance(results.recordset[0].parentId,50);
+                                    query=`SELECT parentId from userRelation WHERE userId='${results.recordset[0].parentId}'`;
+                                    new sql.Request().query(query, function(error,results){
                                         if(error)
                                         console.log(error)
-                                        if(results && results.length!=0){
-                                            addBalance(results[0].parentId,25);
-                                            query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
-                                            connection.query(query,function (error,results,fields){
+                                        if(results && results.recordset.length!=0){
+                                            addBalance(results.recordset[0].parentId,25);
+                                            query=`SELECT parentId from userRelation WHERE userId='${results.recordset[0].parentId}'`;
+                                            new sql.Request().query(query, function(error,results){
                                                 if(error)
                                                 console.log(error)
-                                                if(results && results.length!=0){
-                                                    addBalance(results[0].parentId,10);
-                                                    query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
-                                                    connection.query(query,function (error,results,fields){
+                                                if(results && results.recordset.length!=0){
+                                                    addBalance(results.recordset[0].parentId,10);
+                                                    query=`SELECT parentId from userRelation WHERE userId='${results.recordset[0].parentId}'`;
+                                                    new sql.Request().query(query, function(error,results){
                                                         if(error)
                                                         console.log(error)
-                                                        if(results && results.length!=0){
-                                                            addBalance(results[0].parentId,5);
+                                                        if(results && results.recordset.length!=0){
+                                                            addBalance(results.recordset[0].parentId,5);
 
                                                         }
                                                     })
@@ -125,29 +120,29 @@ function distributeMoney(parentId){
 }
 
 function handleSignup(req,res,relation,parentId){
-    query=`INSERT INTO users VALUES(UUID(),'${req.body.userName}','${req.body.emailId}',now(),'${req.body.password}','${ref_code.code}') `;
-    connection.query(query,function (error, results, fields){
+    query=`INSERT INTO users(id,userName,email,createdAt,pwd,ref_code,mobile,accActive,lastLogonTime) VALUES(NEWID(),'${req.body.userName}','${req.body.emailId}',GETDATE(),'${req.body.password}','${ref_code.code}','${req.body.mobile}',1,GETDATE()) `;
+    new sql.Request().query(query, function(error,results){
         if(error){
             console.log(error);
         }
         else{
-            console.log(results,fields);
+            console.log(results);
             
             
                 query=`SELECT id from users where email='${req.body.emailId}'`
-                connection.query(query,function (error, results, fields){
+                new sql.Request().query(query, function(error,results){
                     if(error){
                         console.log(error);
                     }else{
-                        query=`INSERT INTO userWallet VALUES('${results[0].id}',0,now())`;
-                        connection.query(query,function(error,results,fields){
+                        query=`INSERT INTO userWallet VALUES('${results.recordset[0].id}',0,GETDATE())`;
+                        new sql.Request().query(query, function(error,results){
                             if(error){
                                 console.log(error);
                             }
                         });
                         if(relation){
-                        query=`INSERT INTO userRelation VALUES('${results[0].id}','${parentId}','${relation}')`
-                        connection.query(query,function (error, results, fields){
+                        query=`INSERT INTO userRelation VALUES('${results.recordset[0].id}','${parentId}','${relation}')`
+                        new sql.Request().query(query, function(error,results){
                             if(error){
                                 console.log(error);
                             }else{
@@ -160,7 +155,10 @@ function handleSignup(req,res,relation,parentId){
                     }
                 })    
             
-            res.status(200).send(`User Created successfully, referral Code=${ref_code.code}`)
+            res.status(200).send({
+               success:true,
+               message:`User Created successfully, referral Code=${ref_code.code}` 
+            })
         }
     });
 }
@@ -172,29 +170,29 @@ function checkRefCode(req,res){
         return;
     }
     query=`SELECT id from users where ref_code='${req.body.referralCode}'`
-    connection.query(query,function (error, results, fields){
+    new sql.Request().query(query, function(error,results){
         if(error){
             console.log(error);
         }
         else{
             console.log(results);
-            if(results.length==0){
+            if(results.recordset.length==0){
                 res.status(200).send({success:false,message:"Invalid Referral Code"});
                 return;
             }
-            userId=results[0].id;
+            userId=results.recordset[0].id;
             query=`SELECT count(*) as count from userRelation where parentId='${userId}'`;
-            connection.query(query,function (error, results, fields){
+            new sql.Request().query(query, function(error,results){
                 if(error){
                     console.log(error);
                 }
                 else{
-                    console.log(results[0].count);
-                    if(results[0].count==0){
+                    console.log(results.recordset[0].count);
+                    if(results.recordset[0].count==0){
                         //add left
                         handleSignup(req,res,'LEFT',userId);
                     }
-                    else if(results[0].count==1){
+                    else if(results.recordset[0].count==1){
                         //ad right
                         handleSignup(req,res,'RIGHT',userId);
                     }
@@ -210,12 +208,12 @@ function getNewRefCode(req,res){
     ref_code={code:generate_code(7)};
     console.log(ref_code);
     query=`SELECT COUNT(*) as count from users WHERE ref_code='${ref_code.code}'`
-    connection.query(query,function (error, results, fields){
+    new sql.Request().query(query, function(error,results){
         if(error){
             console.log(error);
         }
         else{
-            if(results[0].count!=0){
+            if(results.recordset[0].count!=0){
                 getNewRefCode(req,res);
             }
             else{
@@ -224,6 +222,30 @@ function getNewRefCode(req,res){
         }
     })
 }
+
+function getGraph(id,req,res){
+    query=`SELECT * from users where id='${id}'`;
+}
+
+app.get('/graph/:email',function(req,res){
+    console.log(req.params);
+    query=`SELECT id from users where email='${req.params.email}'`;
+    new sql.Request().query(query, function(error,results){
+        if(error){
+            console.log(error)
+        }
+        if(results && results.recordset.length!=0){
+            userId=results.recordset[0].id;
+            graph=getGraph(userId);
+            res.status(200).send({success:true,graph:graph});;
+        }
+        else{
+            res.status(400).send({success:false,message:"Internal Server Error"});
+        }
+    })
+    
+})
+
 app.post('/signup', function (req, res) {
     result = validateSignUp(req.body);
     if(result.error){
@@ -236,14 +258,14 @@ app.post('/signup', function (req, res) {
     }
     console.log(req.body)
     query=`SELECT COUNT(*) as count from users WHERE email='${req.body.emailId}'`
-    connection.query(query,function (error, results, fields){
+    new sql.Request().query(query, function(error,results){
         if (error)
         res.status(400).send({
             success: false,
             error: "Database Error"
         });
         else{
-            if(results[0].count!=0){
+            if(results.recordset[0].count!=0){
                 res.status(400).send({
                     success: false,
                     error: "EmailId exists"
@@ -255,6 +277,9 @@ app.post('/signup', function (req, res) {
         }
     });
 })
+
+port=process.env.PORT || 3000;
    
-app.listen(3000)
+app.listen(port)
   
+console.log("Listening at port"+port);
