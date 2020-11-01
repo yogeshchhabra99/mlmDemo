@@ -18,7 +18,7 @@ function validateSignUp(body){
         userName:Joi.string().min(1).required(),
         emailId: Joi.string().min(1).required(),
         password: Joi.string().min(1).required(),
-        referralCode: Joi.string()
+        referralCode: Joi.string().allow("")
     });
     return schema.validate(body);
 }
@@ -35,20 +35,117 @@ function generate_code(length)
     return res;
 }
 
+function addBalance(id,amount){
+    query=`SELECT * from userWallet WHERE userId='${id}'`;
+    connection.query(query,function (error, results, fields){
+        if(error){
+            console.log(error);
+        }
+        if(results){
+            balance = results[0].balance;
+            balance=balance+amount;
+            query=`INSERT INTO userTransactions VALUES('${id}',${amount},'DEBIT',now(),'${balance}')`
+            connection.query(query,function (error, results, fields){
+                if(error){
+                    console.log(error);
+                }
+                if(results){
+                    query = `UPDATE userWallet SET balance=${balance} WHERE userId='${id}'`;
+                    connection.query(query,function (error, results, fields){
+                        if(error){
+                            console.log(error);
+                        }});
+                }
+            });   
+        }
+    })
+}
+
+function distributeMoney(parentId){
+    addBalance(parentId,500);
+
+    query=`SELECT parentId from userRelation WHERE userId='${parentId}'`;
+    connection.query(query,function (error,results,fields){
+        if(error)
+         console.log(error)
+        if(results && results.length!=0){
+            addBalance(results[0].parentId,200);
+            query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
+            connection.query(query,function (error,results,fields){
+                if(error)
+                console.log(error)
+                if(results && results.length!=0){
+                    addBalance(results[0].parentId,150);
+                    query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
+                    connection.query(query,function (error,results,fields){
+                        if(error)
+                        console.log(error)
+                        if(results && results.length!=0){
+                            addBalance(results[0].parentId,100);
+                            query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
+                            connection.query(query,function (error,results,fields){
+                                if(error)
+                                console.log(error)
+                                if(results && results.length!=0){
+                                    addBalance(results[0].parentId,50);
+                                    query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
+                                    connection.query(query,function (error,results,fields){
+                                        if(error)
+                                        console.log(error)
+                                        if(results && results.length!=0){
+                                            addBalance(results[0].parentId,25);
+                                            query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
+                                            connection.query(query,function (error,results,fields){
+                                                if(error)
+                                                console.log(error)
+                                                if(results && results.length!=0){
+                                                    addBalance(results[0].parentId,10);
+                                                    query=`SELECT parentId from userRelation WHERE userId='${results[0].parentId}'`;
+                                                    connection.query(query,function (error,results,fields){
+                                                        if(error)
+                                                        console.log(error)
+                                                        if(results && results.length!=0){
+                                                            addBalance(results[0].parentId,5);
+
+                                                        }
+                                                    })
+                                                }
+                                            })
+                                        }
+                                    })      
+                                }
+                            })
+                        }
+                    })    
+                }
+            })        
+        }
+    })
+    
+}
+
 function handleSignup(req,res,relation,parentId){
-    query=`INSERT INTO users VALUES(UUID(),'${req.body.userName}','${req.body.emailId}',curdate(),'${req.body.password}','${ref_code.code}') `;
+    query=`INSERT INTO users VALUES(UUID(),'${req.body.userName}','${req.body.emailId}',now(),'${req.body.password}','${ref_code.code}') `;
     connection.query(query,function (error, results, fields){
         if(error){
             console.log(error);
         }
         else{
             console.log(results,fields);
-            if(relation){
+            
+            
                 query=`SELECT id from users where email='${req.body.emailId}'`
                 connection.query(query,function (error, results, fields){
                     if(error){
                         console.log(error);
                     }else{
+                        query=`INSERT INTO userWallet VALUES('${results[0].id}',0,now())`;
+                        connection.query(query,function(error,results,fields){
+                            if(error){
+                                console.log(error);
+                            }
+                        });
+                        if(relation){
                         query=`INSERT INTO userRelation VALUES('${results[0].id}','${parentId}','${relation}')`
                         connection.query(query,function (error, results, fields){
                             if(error){
@@ -56,9 +153,13 @@ function handleSignup(req,res,relation,parentId){
                             }else{
                                 console.log("user relation added");
                             }})
+                        if(relation=="RIGHT"){
+                            distributeMoney(parentId);
+                        }
+                        }
                     }
                 })    
-            }
+            
             res.status(200).send(`User Created successfully, referral Code=${ref_code.code}`)
         }
     });
@@ -66,7 +167,7 @@ function handleSignup(req,res,relation,parentId){
 
 function checkRefCode(req,res){
 
-    if(!req.body.referralCode){
+    if(!req.body.referralCode || req.body.referralCode.length==0){
         handleSignup(req,res,null,null );
         return;
     }
@@ -82,17 +183,18 @@ function checkRefCode(req,res){
                 return;
             }
             userId=results[0].id;
-            query=`SELECT count(*) from userRelation where parentId='${userId}'`;
+            query=`SELECT count(*) as count from userRelation where parentId='${userId}'`;
             connection.query(query,function (error, results, fields){
                 if(error){
                     console.log(error);
                 }
                 else{
-                    if(results.length==0){
+                    console.log(results[0].count);
+                    if(results[0].count==0){
                         //add left
                         handleSignup(req,res,'LEFT',userId);
                     }
-                    else if(result.length==1){
+                    else if(results[0].count==1){
                         //ad right
                         handleSignup(req,res,'RIGHT',userId);
                     }
@@ -125,6 +227,7 @@ function getNewRefCode(req,res){
 app.post('/signup', function (req, res) {
     result = validateSignUp(req.body);
     if(result.error){
+        console.log("validation error");
         res.status(400).send({
             success: false,
             error: result.error
