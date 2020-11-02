@@ -4,7 +4,6 @@ const app = express()
 const Joi = require('joi');
 app.use(express.json());
 const sql = require('mssql')
-sql.connect('mssql://apjindiashop:9782960150@mM@5.226.138.48/apjindiashop')
 
 function validateSignUp(body){
     const schema=Joi.object({

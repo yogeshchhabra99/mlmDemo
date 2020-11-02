@@ -6,9 +6,9 @@ async function fun() {
     try {
         
         // make sure that any items are correctly URL encoded in the connection string
-        await sql.connect('mssql://apjindiashop:9782960150@mM@5.226.138.48/apjindiashop')
+        await sql.connect('mssql://apjindiashop:/apjindiashop')
         //const result = await sql.query`insert INTO testTable(testField) VALUES('Chhabra here')`
-        new sql.Request().query(`SELECT * from userWallet`,(err,results)=>{
+        new sql.Request().query(`SELECT * from users`,(err,results)=>{
             if(err)
                 console.log(err);
             console.log(results)
