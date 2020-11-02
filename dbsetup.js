@@ -77,7 +77,6 @@ async function setupUserTransactionsTable(){
 }
 
 async function setup(){
-    await sql.connect('mssql://apjindiashop:9782960150@mM@5.226.138.48/apjindiashop')
     //setupUsersTable();
     //setupUserRelationTable();
     //setupUserTransactionsTable();
