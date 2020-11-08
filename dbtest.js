@@ -6,7 +6,7 @@ async function fun() {
     try {
         
         // make sure that any items are correctly URL encoded in the connection string
-        await sql.connect('mssql://apjindiashop:/apjindiashop')
+        await sql.connect('')
         //const result = await sql.query`insert INTO testTable(testField) VALUES('Chhabra here')`
         new sql.Request().query(`SELECT * from users`,(err,results)=>{
             if(err)

@@ -3,7 +3,9 @@ const express = require('express')
 const app = express()
 const Joi = require('joi');
 app.use(express.json());
-const sql = require('mssql')
+const sql = require('mssql');
+const { array } = require('joi');
+sql.connect('')
 
 function validateSignUp(body){
     const schema=Joi.object({
@@ -156,7 +158,8 @@ function handleSignup(req,res,relation,parentId){
             
             res.status(200).send({
                success:true,
-               message:`User Created successfully, referral Code=${ref_code.code}` 
+               message:`User Created successfully, referral Code=${ref_code.code}`,
+               ref_code: ref_code.code
             })
         }
     });
@@ -222,21 +225,110 @@ function getNewRefCode(req,res){
     })
 }
 
-function getGraph(id,req,res){
-    query=`SELECT * from users where id='${id}'`;
-}
+async function getGraphByIds(ids) {
+    var i;
+    var graphs=[];
+    for(i=0;i<ids.length;i++){
+        graphs.push({
+                     id:ids[i],
+                     children:[],
+                     userName:""
+                 })
+    }
+    // ids.forEach(id=>{
+    //     graphs.push({
+    //         id:id,
+    //         children:[],
+    //     })
+    // })
 
-app.get('/graph/:email',function(req,res){
-    console.log(req.params);
-    query=`SELECT id from users where email='${req.params.email}'`;
-    new sql.Request().query(query, function(error,results){
+    for(i=0;i<ids.length; i++) {
+        ids[i]="'"+ids[i]+"'"
+    }
+    query=`SELECT * from userRelation where parentId IN (${ids.join()})`;
+    try{
+    const result = await sql.query(query);
+    const users = await sql.query(`SELECT * from users where id IN (${ids.join()})`);
+    
+    for(i=0;i<graphs.length;i++){
+        
+        user=users.recordset.find(user=>user.id==graphs[i].id);
+        if(user)
+        graphs[i].userName=user.username;
+    }
+
+    newIds=[];
+    result.recordset.forEach(userRelation=>{
+        newIds.push(userRelation.userId);
+    })
+    
+    if(result.rowsAffected!=-1 && newIds.length==0){
+        
+        return graphs;
+    }
+    
+    children=await getGraphByIds(newIds);
+    
+    result.recordset.forEach(userRelation=>{
+        var i;
+        for(i=0;i<graphs.length;i++){
+            if(graphs[i].id==userRelation.parentId){
+                let child=children.find(graph=>graph.id==userRelation.userId);
+                graphs[i].children.push(child);
+            }
+        }
+        
+    })
+
+
+        if(result.rowsAffected!=-1){
+            return graphs;
+        }
+        else{
+            return{};
+        }
+    }
+    catch(e){
+        console.log(e);
+        return {};
+    }
+ }
+
+async function getGraphByEmail(emailId){
+
+    query=`SELECT id from users where email='${emailId}'`;
+    new sql.Request().query(query,async function(error,results){
         if(error){
             console.log(error)
         }
         if(results && results.recordset.length!=0){
             userId=results.recordset[0].id;
-            graph=getGraph(userId);
-            res.status(200).send({success:true,graph:graph});;
+            graph=await getGraphByIds([userId]);
+            console.log({"achha":"achha",graph});
+            return graph;
+        }
+        else{
+            return {success:false,message:"Internal Server Error"};
+        }
+    })
+}
+
+async function getAllUsers(){
+    return await sql.query(`SELECT id, username, email from users`);
+}
+
+//e.g. url = localhost:5000/graph/abc@gmail.com
+app.get('/graph/:email', async function(req,res){  
+    query=`SELECT id from users where email='${req.params.email}'`;
+    new sql.Request().query(query,async function(error,results){
+        if(error){
+            console.log(error)
+        }
+        if(results && results.recordset.length!=0){
+            userId=results.recordset[0].id;
+            graph=await getGraphByIds([userId]);
+            console.log({"achha":"achha",graph});
+            res.status(200).send({success:true,graph:graph});
         }
         else{
             res.status(400).send({success:false,message:"Internal Server Error"});

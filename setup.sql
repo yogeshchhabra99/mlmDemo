@@ -19,7 +19,12 @@ CREATE TABLE users (id VARCHAR(40),
                     UNIQUE(email),
                     UNIQUE(ref_code) );
 
-CREATE TABLE userRelation (userId VARCHAR(40), parentId VARCHAR(40), relation ENUM('LEFT', 'RIGHT'), FOREIGN KEY(userId) REFERENCES users(id), FOREIGN KEY(parentId) REFERENCES users(id));
+CREATE TABLE userRelation (userId VARCHAR(40), 
+                            parentId VARCHAR(40), 
+                            relation ENUM('LEFT', 
+                            'RIGHT'), 
+                            FOREIGN KEY(userId) REFERENCES users(id), 
+                            FOREIGN KEY(parentId) REFERENCES users(id));
 
 CREATE TABLE userWallet(userId VARCHAR(40), balance DOUBLE(20,6), updatedAt DATETIME, FOREIGN KEY(userId) REFERENCES users(id));
 
